@@ -2,15 +2,15 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #0d121e;
-  --color-card: #0e1626;
-  --color-text-main: #f3f4f6;
-  --color-text-muted: #94a3b8;
-  --color-border: rgba(255, 255, 255, 0.05);
+  --color-bg: #111625;
+  --color-card: #161c2e;
+  --color-text-main: #f1f5f9;
+  --color-text-muted: #8fa0ba;
+  --color-border: rgba(202, 163, 92, 0.08);
   
-  --shadow-raised: 6px 6px 14px rgba(2, 4, 8, 0.7), -6px -6px 14px rgba(255, 255, 255, 0.035);
-  --shadow-sunken: inset 4px 4px 8px rgba(2, 4, 8, 0.8), inset -4px -4px 8px rgba(255, 255, 255, 0.025);
-  --shadow-active: inset 2px 2px 4px rgba(2, 4, 8, 0.8), inset -2px -2px 4px rgba(255, 255, 255, 0.025);
+  --shadow-raised: 6px 6px 16px rgba(5, 7, 13, 0.6), -6px -6px 16px rgba(255, 255, 255, 0.015);
+  --shadow-sunken: inset 4px 4px 8px rgba(5, 7, 13, 0.7), inset -4px -4px 8px rgba(255, 255, 255, 0.01);
+  --shadow-active: inset 2px 2px 4px rgba(5, 7, 13, 0.7), inset -2px -2px 4px rgba(255, 255, 255, 0.01);
 }
 
 @theme {
@@ -20,6 +20,19 @@
   --color-app-muted: var(--color-text-muted);
   --color-app-border: var(--color-border);
 
+  /* Redefining Amber colors to match Rasana's elegant sand-gold */
+  --color-amber-50: #fbf8f3;
+  --color-amber-100: #f5eddd;
+  --color-amber-200: #ebdcbf;
+  --color-amber-300: #dec193;
+  --color-amber-400: #d1ab6c;
+  --color-amber-500: #caa35c;
+  --color-amber-600: #b88f4c;
+  --color-amber-700: #997136;
+  --color-amber-800: #7a562d;
+  --color-amber-900: #644527;
+  --color-amber-950: #3b2514;
+
   --font-sans: "Tajawal", "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Montserrat", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -28,7 +41,7 @@
   --shadow-neumorphic-raised: var(--shadow-raised);
   --shadow-neumorphic-sunken: var(--shadow-sunken);
   --shadow-neumorphic-active: var(--shadow-active);
-  --shadow-neumorphic-gold: 0px 4px 12px rgba(234, 179, 8, 0.15);
+  --shadow-neumorphic-gold: 0px 4px 12px rgba(202, 163, 92, 0.15);
 }
 
 /* Custom styles for gorgeous neumorphic scrollbars and global text direction */

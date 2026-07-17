@@ -288,29 +288,43 @@ export default function App() {
       {/* HEADER SECTION WITH BRANDING */}
       <header className="w-full max-w-7xl mx-auto px-4 pt-8 pb-4">
         <div className="w-full p-6 rounded-2xl bg-app-card shadow-neumorphic-raised border border-app-border flex flex-col md:flex-row items-center justify-between gap-6 transition-all duration-300">
-          <div className="flex items-center gap-4">
-            {/* Neumorphic Shield Logo */}
-            <div className="w-14 h-14 rounded-xl bg-app-card shadow-neumorphic-raised border border-amber-500/10 flex items-center justify-center relative">
-              <div className="w-11 h-11 rounded-lg bg-app-bg shadow-neumorphic-sunken flex items-center justify-center">
-                <Shield className="w-6 h-6 text-amber-400" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[45%] text-[10px] text-amber-400 font-bold">
-                  ↑
-                </div>
+          <a 
+            href="https://indigo-armadillo-445421.hostingersite.com/#hero"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-4 group cursor-pointer"
+          >
+            {/* Shield Logo matching image */}
+            <div className="w-14 h-14 rounded-[18px] bg-app-card shadow-neumorphic-raised border border-amber-500/20 group-hover:border-amber-500/50 flex items-center justify-center transition-all duration-300">
+              <div className="w-11 h-11 rounded-[12px] bg-app-bg shadow-neumorphic-sunken flex items-center justify-center text-amber-500 group-hover:text-amber-400 transition-colors">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="w-6 h-6"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <path d="M12 15V8" />
+                  <path d="M9 11l3-3 3 3" />
+                </svg>
               </div>
             </div>
             
             <div className="text-right">
-              <h1 className="text-2xl font-extrabold text-app-text tracking-tight flex items-center gap-2">
-                <span>رصَـانَـة</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium tracking-widest uppercase font-display">
-                  Rasana
+              <h1 className="text-2xl font-extrabold text-app-text tracking-tight flex flex-col group-hover:text-amber-500 transition-colors leading-tight">
+                <span className="font-sans text-xl font-bold tracking-normal">رَصَانَة</span>
+                <span className="text-[11px] text-amber-500 tracking-[0.25em] font-extrabold uppercase font-display mt-0.5">
+                  RASANA
                 </span>
               </h1>
-              <p className="text-xs text-app-muted mt-1 font-medium">
+              <p className="text-[11px] text-app-muted mt-0.5 font-medium">
                 لوحة متابعة ومراقبة الشركات والمخالفات التنظيمية
               </p>
             </div>
-          </div>
+          </a>
 
           {/* Navigation Tabs (Neumorphic Segmented Control) */}
           <div className="flex flex-wrap bg-app-bg p-1.5 rounded-xl shadow-neumorphic-sunken border border-app-border/40 gap-1">
@@ -1148,37 +1162,53 @@ export default function App() {
       )}
 
       {/* FOOTER SECTION - AS SHOWN IN ATTACHED IMAGE */}
-      <footer className="w-full max-w-7xl mx-auto px-4 mt-12 border-t border-slate-800/60 pt-10">
+      <footer className="w-full max-w-7xl mx-auto px-4 mt-12 border-t border-app-border/40 pt-10">
         <div className="flex flex-col items-center text-center gap-6">
           
           {/* Centered Golden Shield Logo */}
-          <div className="w-16 h-16 rounded-2xl bg-[#0e1626] shadow-neumorphic-raised flex items-center justify-center border border-amber-500/10">
-            <div className="w-12 h-12 rounded-xl bg-[#0d121e] shadow-neumorphic-sunken flex items-center justify-center">
-              <Shield className="w-7 h-7 text-amber-500/90" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[45%] text-[11px] text-amber-500/90 font-black">
-                ↑
+          <a 
+            href="https://indigo-armadillo-445421.hostingersite.com/#hero"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col items-center gap-4 group cursor-pointer"
+          >
+            <div className="w-16 h-16 rounded-[20px] bg-app-card shadow-neumorphic-raised flex items-center justify-center border border-amber-500/20 group-hover:border-amber-500/50 transition-all duration-300">
+              <div className="w-12 h-12 rounded-[14px] bg-app-bg shadow-neumorphic-sunken flex items-center justify-center text-amber-500 group-hover:text-amber-400 transition-colors">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="w-7 h-7"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <path d="M12 15V8" />
+                  <path d="M9 11l3-3 3 3" />
+                </svg>
               </div>
             </div>
-          </div>
 
-          {/* Rasana Typography */}
-          <div className="flex flex-col items-center gap-1.5">
-            <h2 className="text-3xl font-extrabold text-white tracking-widest">رصَـانَـة</h2>
-            <p className="text-[11px] text-amber-500/90 tracking-[0.3em] font-extrabold uppercase font-mono">
-              Rasana
-            </p>
-          </div>
+            {/* Rasana Typography */}
+            <div className="flex flex-col items-center gap-1">
+              <h2 className="text-3xl font-extrabold text-app-text group-hover:text-amber-500 transition-colors tracking-widest leading-none">رَصَانَة</h2>
+              <p className="text-[12px] text-amber-500 tracking-[0.3em] font-extrabold uppercase font-display mt-1">
+                RASANA
+              </p>
+            </div>
+          </a>
 
           {/* Detailed Statement Tagline */}
-          <p className="max-w-2xl text-sm leading-relaxed text-slate-400 font-medium px-4">
+          <p className="max-w-2xl text-sm leading-relaxed text-app-muted font-medium px-4">
             نبني كيانات مستقرة. نصنع حلولاً رصينة. استشارات إدارية وقانونية وذكاء اصطناعي للارتقاء بأداء المنشآت الوطنية نحو رؤية المملكة ٢٠٣٠.
           </p>
 
           {/* Divider line */}
-          <div className="w-full max-w-lg border-b border-slate-800/50 my-2"></div>
+          <div className="w-full max-w-lg border-b border-app-border/40 my-2"></div>
 
           {/* Copyright notice */}
-          <p className="text-xs text-slate-500 font-semibold">
+          <p className="text-xs text-app-muted font-semibold">
             جميع الحقوق محفوظة © ٢٠٢٦ شركة رصانة للاستشارات.
           </p>
 
