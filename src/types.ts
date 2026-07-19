@@ -56,3 +56,18 @@ export interface UpcomingRenewal {
   expiryDate: string;
   remainingDays: number;
 }
+
+export interface EmailContact {
+  name: string;        // D: الاسم
+  jobTitle: string;    // F: المسمى الوظيفي
+  department: string;  // H: القسم
+  email: string;       // I: ايميلات الخليجي
+}
+
+export interface PhoneExtension {
+  name: string;        // D: الاسم (أو القسم H إذا كان الاسم فارغاً)
+  jobTitle: string;    // F: المسمى الوظيفي (إن وجد)
+  department: string;  // H: القسم
+  extension: string;   // J: رقم التحويلة
+}
+

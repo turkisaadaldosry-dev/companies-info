@@ -1,4 +1,4 @@
-import { Company, Violation, UpcomingRenewal } from './types';
+import { Company, Violation, UpcomingRenewal, EmailContact, PhoneExtension } from './types';
 
 // Robust CSV parser that handles quoted strings containing commas
 export function parseCSV(text: string): string[][] {
@@ -182,3 +182,54 @@ export function getRemainingDaysBg(days: number): string {
   if (days < 30) return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
   return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
 }
+
+// Map Emails CSV data (Columns D: name, F: jobTitle, H: department, I: email)
+export function mapEmails(csvData: string[][]): EmailContact[] {
+  if (csvData.length <= 1) return [];
+  const dataRows = csvData.slice(1);
+  return dataRows
+    .map((row) => {
+      return {
+        name: cleanString(row[3] || ''),
+        jobTitle: cleanString(row[5] || ''),
+        department: cleanString(row[7] || ''),
+        email: cleanString(row[8] || ''),
+      };
+    })
+    .filter(item => item.name !== '' || item.email !== '');
+}
+
+// Map Extensions CSV data (J is extension, D is name, F is job, H is department)
+export function mapExtensions(csvData: string[][]): PhoneExtension[] {
+  if (csvData.length <= 1) return [];
+  const dataRows = csvData.slice(1);
+  return dataRows
+    .map((row) => {
+      const ext = cleanString(row[9] || '');
+      const nameInD = cleanString(row[3] || '');
+      const deptInH = cleanString(row[7] || '');
+      const jobInF = cleanString(row[5] || '');
+      
+      if (!ext) return null;
+      
+      let finalName = '';
+      let finalJobTitle = '';
+      
+      if (nameInD) {
+        finalName = nameInD;
+        finalJobTitle = jobInF;
+      } else {
+        finalName = deptInH;
+        finalJobTitle = '';
+      }
+      
+      return {
+        name: finalName,
+        jobTitle: finalJobTitle,
+        department: deptInH,
+        extension: ext
+      };
+    })
+    .filter((item): item is PhoneExtension => item !== null && item.name !== '' && item.extension !== '');
+}
+

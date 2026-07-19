@@ -20,10 +20,12 @@ import {
   Info,
   DollarSign,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Company, Violation, UpcomingRenewal } from './types';
+import { Company, Violation, UpcomingRenewal, EmailContact, PhoneExtension } from './types';
 import { 
   parseCSV, 
   mapCompanies, 
@@ -31,21 +33,39 @@ import {
   extractUpcomingRenewals, 
   formatCurrency, 
   getRemainingDaysBg,
-  getRemainingDaysColor
+  getRemainingDaysColor,
+  mapEmails,
+  mapExtensions
 } from './utils';
 
 // Published CSV spreadsheet URLs
 const COMPANIES_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTHEm-CYLp3cpLwN_FX7VoBtQ4OhpkOchhwrQcse2bHbNqscW13jxfsVH9b7lok13sLMFGUSKIMxuBn/pub?gid=2091140512&single=true&output=csv";
 const VIOLATIONS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTHEm-CYLp3cpLwN_FX7VoBtQ4OhpkOchhwrQcse2bHbNqscW13jxfsVH9b7lok13sLMFGUSKIMxuBn/pub?gid=1636739595&single=true&output=csv";
+const DIRECTORY_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTHEm-CYLp3cpLwN_FX7VoBtQ4OhpkOchhwrQcse2bHbNqscW13jxfsVH9b7lok13sLMFGUSKIMxuBn/pub?gid=1252075168&single=true&output=csv";
 
 export default function App() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [violations, setViolations] = useState<Violation[]>([]);
+  const [emails, setEmails] = useState<EmailContact[]>([]);
+  const [extensions, setExtensions] = useState<PhoneExtension[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'companies' | 'renewals' | 'violations'>('companies');
+  const [activeTab, setActiveTab] = useState<'companies' | 'renewals' | 'violations' | 'emails' | 'extensions'>('companies');
   
+  // Filters State for Emails
+  const [emailFilters, setEmailFilters] = useState({
+    search: '',
+    department: '',
+    jobTitle: ''
+  });
+
+  // Filters State for Extensions
+  const [extFilters, setExtFilters] = useState({
+    search: '',
+    department: ''
+  });
+
   // Filters State for Renewals
   const [renewalsFilters, setRenewalsFilters] = useState({
     status: '',
@@ -61,6 +81,14 @@ export default function App() {
     unifiedNumber: string;
     violationsList: Violation[];
   } | null>(null);
+
+  // Clipboard Copied State & Helper
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(label);
+    setTimeout(() => setCopiedText(null), 2000);
+  };
 
   // Filters State for Companies
   const [companyFilters, setCompanyFilters] = useState({
@@ -86,29 +114,36 @@ export default function App() {
     else setIsRefreshing(true);
     setError(null);
     try {
-      // Fetch both sheets concurrently
-      const [companiesRes, violationsRes] = await Promise.all([
+      // Fetch all three sheets concurrently
+      const [companiesRes, violationsRes, directoryRes] = await Promise.all([
         fetch(`${COMPANIES_URL}&_nocache=${Date.now()}`),
-        fetch(`${VIOLATIONS_URL}&_nocache=${Date.now()}`)
+        fetch(`${VIOLATIONS_URL}&_nocache=${Date.now()}`),
+        fetch(`${DIRECTORY_URL}&_nocache=${Date.now()}`)
       ]);
 
-      if (!companiesRes.ok || !violationsRes.ok) {
+      if (!companiesRes.ok || !violationsRes.ok || !directoryRes.ok) {
         throw new Error("فشل الاتصال بخوادم مستندات جوجل. يرجى التحقق من الاتصال.");
       }
 
-      const [companiesText, violationsText] = await Promise.all([
+      const [companiesText, violationsText, directoryText] = await Promise.all([
         companiesRes.text(),
-        violationsRes.text()
+        violationsRes.text(),
+        directoryRes.text()
       ]);
 
       const parsedCompaniesCSV = parseCSV(companiesText);
       const parsedViolationsCSV = parseCSV(violationsText);
+      const parsedDirectoryCSV = parseCSV(directoryText);
 
       const mappedCompanies = mapCompanies(parsedCompaniesCSV);
       const mappedViolations = mapViolations(parsedViolationsCSV);
+      const mappedEmails = mapEmails(parsedDirectoryCSV);
+      const mappedExtensions = mapExtensions(parsedDirectoryCSV);
 
       setCompanies(mappedCompanies);
       setViolations(mappedViolations);
+      setEmails(mappedEmails);
+      setExtensions(mappedExtensions);
     } catch (err: any) {
       console.error(err);
       setError(err.message || "حدث خطأ غير متوقع أثناء تحميل البيانات.");
@@ -218,6 +253,36 @@ export default function App() {
     const matchDate = !violationFilters.monthYear || getMonthYearKey(v.violationDate) === violationFilters.monthYear;
     return matchAuthority && matchCompany && matchPayment && matchObjection && matchViolationNum && matchDate;
   });
+
+  // Filters calculation for Emails Page
+  const filteredEmails = emails.filter(email => {
+    const searchLower = emailFilters.search.toLowerCase();
+    const matchSearch = !emailFilters.search || 
+      email.name.toLowerCase().includes(searchLower) ||
+      email.jobTitle.toLowerCase().includes(searchLower) ||
+      email.department.toLowerCase().includes(searchLower) ||
+      email.email.toLowerCase().includes(searchLower);
+    const matchDept = !emailFilters.department || email.department === emailFilters.department;
+    const matchJob = !emailFilters.jobTitle || email.jobTitle === emailFilters.jobTitle;
+    return matchSearch && matchDept && matchJob;
+  });
+
+  const uniqueEmailDepts = getUniqueValues(emails.map(e => e.department));
+  const uniqueEmailJobs = getUniqueValues(emails.map(e => e.jobTitle));
+
+  // Filters calculation for Extensions Page
+  const filteredExtensions = extensions.filter(ext => {
+    const searchLower = extFilters.search.toLowerCase();
+    const matchSearch = !extFilters.search ||
+      ext.name.toLowerCase().includes(searchLower) ||
+      ext.jobTitle.toLowerCase().includes(searchLower) ||
+      ext.department.toLowerCase().includes(searchLower) ||
+      ext.extension.toLowerCase().includes(searchLower);
+    const matchDept = !extFilters.department || ext.department === extFilters.department;
+    return matchSearch && matchDept;
+  });
+
+  const uniqueExtDepts = getUniqueValues(extensions.map(e => e.department));
 
   // Calculate Summary Cards for Companies page: Expired Counts (< 0)
   const expiredChamberCount = companies.filter(c => c.cocRemaining < 0).length;
@@ -330,7 +395,7 @@ export default function App() {
           <div className="flex flex-wrap bg-app-bg p-1.5 rounded-xl shadow-neumorphic-sunken border border-app-border/40 gap-1">
             <button
               onClick={() => setActiveTab('companies')}
-              className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+              className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                 activeTab === 'companies'
                   ? 'bg-app-card text-amber-500 shadow-neumorphic-raised border border-amber-500/20'
                   : 'text-app-muted hover:text-app-text'
@@ -340,7 +405,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('renewals')}
-              className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+              className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                 activeTab === 'renewals'
                   ? 'bg-app-card text-amber-500 shadow-neumorphic-raised border border-amber-500/20'
                   : 'text-app-muted hover:text-app-text'
@@ -350,13 +415,35 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('violations')}
-              className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+              className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                 activeTab === 'violations'
                   ? 'bg-app-card text-amber-500 shadow-neumorphic-raised border border-amber-500/20'
                   : 'text-app-muted hover:text-app-text'
               }`}
             >
               سجل المخالفات
+            </button>
+            <button
+              onClick={() => setActiveTab('emails')}
+              className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'emails'
+                  ? 'bg-app-card text-amber-500 shadow-neumorphic-raised border border-amber-500/20'
+                  : 'text-app-muted hover:text-app-text'
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>دليل البريد الإلكتروني</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('extensions')}
+              className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'extensions'
+                  ? 'bg-app-card text-amber-500 shadow-neumorphic-raised border border-amber-500/20'
+                  : 'text-app-muted hover:text-app-text'
+              }`}
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span>دليل التحويلات</span>
             </button>
           </div>
 
@@ -1157,9 +1244,351 @@ export default function App() {
               </motion.div>
             )}
 
+            {/* VIEW 4: EMAILS DIRECTORY */}
+            {activeTab === 'emails' && (
+              <motion.div
+                key="emails-tab"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col gap-6"
+              >
+                {/* Header Information */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-app-border pb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-app-text flex items-center gap-2">
+                      <Mail className="w-6 h-6 text-amber-500" />
+                      <span>دليل البريد الإلكتروني للخليجي</span>
+                    </h2>
+                    <p className="text-xs text-app-muted mt-1">قائمة منسقة لعناوين البريد الإلكتروني لمنسوبي وأقسام شركة رصانة للاستشارات</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-xs px-3 py-1.5 rounded-xl bg-app-card shadow-neumorphic-raised text-app-text font-bold flex items-center gap-1.5 border border-amber-500/10">
+                      <Users className="w-3.5 h-3.5 text-amber-500" />
+                      <span>عدد العناوين: {filteredEmails.length}</span>
+                    </span>
+                    <span className="text-xs px-3 py-1.5 rounded-xl bg-app-card shadow-neumorphic-raised text-app-text font-bold flex items-center gap-1.5 border border-amber-500/10">
+                      <Building2 className="w-3.5 h-3.5 text-amber-500" />
+                      <span>الأقسام النشطة: {uniqueEmailDepts.length}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filters Panel */}
+                <div className="p-5 rounded-2xl bg-app-card shadow-neumorphic-raised border border-app-border flex flex-col gap-4">
+                  <div className="flex items-center gap-2 text-sm font-bold text-app-text border-b border-app-border/20 pb-2">
+                    <Filter className="w-4 h-4 text-amber-500" />
+                    <span>تصفية وفلترة دليل البريد</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* Search input */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-app-muted font-semibold">بحث سريع</label>
+                      <div className="relative">
+                        <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-app-muted" />
+                        <input
+                          type="text"
+                          value={emailFilters.search}
+                          onChange={(e) => setEmailFilters({ ...emailFilters, search: e.target.value })}
+                          placeholder="ابحث بالاسم، المسمى، أو البريد..."
+                          className="w-full pr-10 pl-4 py-2.5 rounded-xl bg-app-bg shadow-neumorphic-sunken text-xs text-app-text placeholder-app-muted/60 focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-transparent"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Department dropdown */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-app-muted font-semibold">القسم</label>
+                      <select
+                        value={emailFilters.department}
+                        onChange={(e) => setEmailFilters({ ...emailFilters, department: e.target.value })}
+                        className="w-full px-3 py-2.5 rounded-xl bg-app-bg shadow-neumorphic-sunken text-xs text-app-text focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-transparent appearance-none cursor-pointer"
+                      >
+                        <option value="">كل الأقسام</option>
+                        {uniqueEmailDepts.map(dept => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Job Title dropdown */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-app-muted font-semibold">المسمى الوظيفي</label>
+                      <select
+                        value={emailFilters.jobTitle}
+                        onChange={(e) => setEmailFilters({ ...emailFilters, jobTitle: e.target.value })}
+                        className="w-full px-3 py-2.5 rounded-xl bg-app-bg shadow-neumorphic-sunken text-xs text-app-text focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-transparent appearance-none cursor-pointer"
+                      >
+                        <option value="">كل المسميات الوظيفية</option>
+                        {uniqueEmailJobs.map(job => (
+                          <option key={job} value={job}>{job}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Reset Filters button */}
+                  {(emailFilters.search || emailFilters.department || emailFilters.jobTitle) && (
+                    <div className="flex justify-end mt-1">
+                      <button
+                        onClick={() => setEmailFilters({ search: '', department: '', jobTitle: '' })}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-amber-500 hover:text-amber-400 bg-app-bg px-3 py-1.5 rounded-lg shadow-neumorphic-raised border border-amber-500/10 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>إعادة تعيين الفلاتر</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Emails Directory Table */}
+                <div className="p-6 rounded-2xl bg-app-card shadow-neumorphic-raised border border-app-border flex flex-col gap-4">
+                  <div className="overflow-x-auto rounded-xl">
+                    <table className="w-full text-right text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-app-bg border-b border-app-border">
+                          <th className="p-4 font-bold text-app-muted text-xs">الاسم</th>
+                          <th className="p-4 font-bold text-app-muted text-xs">المسمى الوظيفي</th>
+                          <th className="p-4 font-bold text-app-muted text-xs">القسم</th>
+                          <th className="p-4 font-bold text-app-muted text-xs font-display">البريد الإلكتروني</th>
+                          <th className="p-4 font-bold text-app-muted text-xs text-center">الإجراءات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-app-border/40 text-xs sm:text-sm">
+                        {filteredEmails.length > 0 ? (
+                          filteredEmails.map((contact, index) => (
+                            <tr key={`email-row-${index}`} className="hover:bg-app-bg/30 transition-all border-b border-app-border/30">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center font-extrabold text-xs">
+                                    {contact.name ? contact.name.trim().charAt(0) : 'ر'}
+                                  </div>
+                                  <span className="font-semibold text-app-text">{contact.name || 'غير محدد'}</span>
+                                </div>
+                              </td>
+                              <td className="p-4 text-app-text">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Briefcase className="w-3.5 h-3.5 text-app-muted/60" />
+                                  <span>{contact.jobTitle || 'غير محدد'}</span>
+                                </span>
+                              </td>
+                              <td className="p-4 text-app-text">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5 text-app-muted/60" />
+                                  <span>{contact.department || 'غير محدد'}</span>
+                                </span>
+                              </td>
+                              <td className="p-4 font-display font-medium text-amber-500 tracking-wide select-all">{contact.email}</td>
+                              <td className="p-4">
+                                <div className="flex items-center justify-center gap-2">
+                                  {contact.email && (
+                                    <>
+                                      <button
+                                        onClick={() => handleCopyText(contact.email, `تم نسخ البريد الإلكتروني لـ ${contact.name}`)}
+                                        className="p-2 rounded-lg bg-app-bg shadow-neumorphic-sunken border border-app-border/40 hover:text-amber-500 text-app-muted transition-all cursor-pointer"
+                                        title="نسخ عنوان البريد"
+                                      >
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                                        </svg>
+                                      </button>
+                                      <a
+                                        href={`mailto:${contact.email}`}
+                                        className="p-2 rounded-lg bg-app-bg shadow-neumorphic-sunken border border-app-border/40 hover:text-amber-500 text-app-muted transition-all cursor-pointer"
+                                        title="إرسال بريد إلكتروني"
+                                      >
+                                        <Mail className="w-3.5 h-3.5" />
+                                      </a>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-app-muted font-medium">
+                              لا توجد سجلات بريد إلكتروني مطابقة للفلاتر المحددة.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* VIEW 5: EXTENSIONS DIRECTORY */}
+            {activeTab === 'extensions' && (
+              <motion.div
+                key="extensions-tab"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col gap-6"
+              >
+                {/* Header Information */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-app-border pb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-app-text flex items-center gap-2">
+                      <Phone className="w-6 h-6 text-amber-500" />
+                      <span>دليل التحويلات الداخلية</span>
+                    </h2>
+                    <p className="text-xs text-app-muted mt-1">أرقام التحويلات والاتصال المباشر لجميع منسوبي وأقسام شركة رصانة للاستشارات</p>
+                  </div>
+                  <div>
+                    <span className="text-xs px-3 py-1.5 rounded-xl bg-app-card shadow-neumorphic-raised text-app-text font-bold flex items-center gap-1.5 border border-amber-500/10">
+                      <Phone className="w-3.5 h-3.5 text-amber-500" />
+                      <span>عدد التحويلات: {filteredExtensions.length}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filters Panel */}
+                <div className="p-5 rounded-2xl bg-app-card shadow-neumorphic-raised border border-app-border flex flex-col gap-4">
+                  <div className="flex items-center gap-2 text-sm font-bold text-app-text border-b border-app-border/20 pb-2">
+                    <Filter className="w-4 h-4 text-amber-500" />
+                    <span>تصفية وفلترة دليل التحويلات</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Search input */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-app-muted font-semibold">بحث سريع</label>
+                      <div className="relative">
+                        <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-app-muted" />
+                        <input
+                          type="text"
+                          value={extFilters.search}
+                          onChange={(e) => setExtFilters({ ...extFilters, search: e.target.value })}
+                          placeholder="ابحث بالاسم، المسمى، أو رقم التحويلة..."
+                          className="w-full pr-10 pl-4 py-2.5 rounded-xl bg-app-bg shadow-neumorphic-sunken text-xs text-app-text placeholder-app-muted/60 focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-transparent"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Department dropdown */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-app-muted font-semibold">القسم</label>
+                      <select
+                        value={extFilters.department}
+                        onChange={(e) => setExtFilters({ ...extFilters, department: e.target.value })}
+                        className="w-full px-3 py-2.5 rounded-xl bg-app-bg shadow-neumorphic-sunken text-xs text-app-text focus:outline-none focus:ring-1 focus:ring-amber-500/40 border border-transparent appearance-none cursor-pointer"
+                      >
+                        <option value="">كل الأقسام</option>
+                        {uniqueExtDepts.map(dept => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Reset Filters button */}
+                  {(extFilters.search || extFilters.department) && (
+                    <div className="flex justify-end mt-1">
+                      <button
+                        onClick={() => setExtFilters({ search: '', department: '' })}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-amber-500 hover:text-amber-400 bg-app-bg px-3 py-1.5 rounded-lg shadow-neumorphic-raised border border-amber-500/10 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>إعادة تعيين الفلاتر</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Extensions Table */}
+                <div className="p-6 rounded-2xl bg-app-card shadow-neumorphic-raised border border-app-border flex flex-col gap-4">
+                  <div className="overflow-x-auto rounded-xl">
+                    <table className="w-full text-right text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-app-bg border-b border-app-border">
+                          <th className="p-4 font-bold text-app-muted text-xs">الاسم المستجيب / الجهة</th>
+                          <th className="p-4 font-bold text-app-muted text-xs">القسم</th>
+                          <th className="p-4 font-bold text-app-muted text-xs font-display">رقم التحويلة</th>
+                          <th className="p-4 font-bold text-app-muted text-xs text-center">الإجراءات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-app-border/40 text-xs sm:text-sm">
+                        {filteredExtensions.length > 0 ? (
+                          filteredExtensions.map((ext, index) => (
+                            <tr key={`ext-row-${index}`} className="hover:bg-app-bg/30 transition-all border-b border-app-border/30">
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-app-text text-sm">{ext.name}</span>
+                                  {ext.jobTitle && (
+                                    <span className="text-xs text-app-muted mt-0.5 font-medium flex items-center gap-1">
+                                      <Briefcase className="w-3 h-3 opacity-60" />
+                                      {ext.jobTitle}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4 text-app-text text-sm">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5 text-app-muted/60" />
+                                  <span>{ext.department || 'عام'}</span>
+                                </span>
+                              </td>
+                              <td className="p-4">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 font-display font-extrabold text-sm tracking-widest shadow-neumorphic-sunken">
+                                  <Phone className="w-3 h-3" />
+                                  {ext.extension}
+                                </span>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => handleCopyText(ext.extension, `تم نسخ رقم التحويلة للـ ${ext.name}`)}
+                                    className="p-2 rounded-lg bg-app-bg shadow-neumorphic-sunken border border-app-border/40 hover:text-amber-500 text-app-muted transition-all cursor-pointer"
+                                    title="نسخ رقم التحويلة"
+                                  >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={4} className="p-8 text-center text-app-muted font-medium">
+                              لا توجد سجلات تحويلات مطابقة للفلاتر المحددة.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
           </AnimatePresence>
         </main>
       )}
+
+      {/* Floating Notification Toast */}
+      <AnimatePresence>
+        {copiedText && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-6 right-6 z-50 px-5 py-3.5 rounded-xl bg-app-card border border-amber-500/30 text-amber-400 font-semibold shadow-2xl flex items-center gap-2 text-sm shadow-neumorphic-raised"
+          >
+            <ShieldCheck className="w-5 h-5 text-amber-500" />
+            <span>{copiedText}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* FOOTER SECTION - AS SHOWN IN ATTACHED IMAGE */}
       <footer className="w-full max-w-7xl mx-auto px-4 mt-12 border-t border-app-border/40 pt-10">
